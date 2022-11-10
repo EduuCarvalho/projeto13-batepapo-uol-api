@@ -1,8 +1,7 @@
 import express from 'express';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
-
-
+import dayjs from 'dayjs';
 
 
 
@@ -34,8 +33,6 @@ app.get("/participants", async (req,res)=>{
 });
 
 
-
-
 app.post("/participants", async (req, res) => {
     const name = req.body;
 
@@ -49,6 +46,43 @@ app.post("/participants", async (req, res) => {
         res.status(500).send(err);
     }
 });
+
+
+app.get("/messages", async (req,res)=>{
+    const limit = parseInt(req.query.limit);
+    const user= req.headers.user;
+
+    try{
+        const messages = await db.collection("message").find().toArray();
+        res.send(messages)
+    } catch (err) {
+        console.log(err);
+        res.sendStatus(500);
+    }
+})
+
+
+
+app.post("/messages", async (req,res)=>{
+    const {to, text, type} = req.body;
+    const from = req.headers.user;
+    const time = dayjs().format('HH:MM:SS')
+
+    try{
+        await db.collection('message').insert({
+            from,
+            to,
+            text,
+            type,
+            time,
+        })
+        res.status(201).send("Mensagem enviada com sucesso");
+    } catch (err){
+        res.status(422).send(err);
+    }
+    
+
+})
 
 
 app.listen(5000, () => {
