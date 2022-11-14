@@ -215,5 +215,5 @@ function updateParticipant (){
 }
 
 app.listen(5000, () => {
-    console.log("Rodando porta 5 mil");
+    console.log("Rodando porta 5k");
 })
