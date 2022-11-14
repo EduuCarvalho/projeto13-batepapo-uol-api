@@ -23,7 +23,7 @@ dotenv.config();
 app.use(cors());
 app.use(express.json());
 
-const mongoClient = new MongoClient("mongodb://localhost:27017")
+const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
 
 try {
@@ -32,6 +32,22 @@ try {
 } catch (err) {
     console.log("error mongodb", err);
 }
+
+
+async function validationParticipant(req){
+
+    const validation = participantsSchema.validate(req.body);
+    const isValid = !validation.error;
+
+    const sameName = await db.collection("participants").findOne({name: req.body.name})
+
+    if (!isValid) {
+        return 422; 
+       } else if (sameName){
+        return 409;
+       }
+}
+
 
 //TUdo certo com o get /participants
 app.get("/participants", async (req,res)=>{
@@ -51,6 +67,7 @@ app.get("/participants", async (req,res)=>{
 //TUdo certo com o post /participants
 app.post("/participants", async (req, res) => {
     const {name}= req.body;
+    const time = dayjs().format("HH:mm:ss");
 
     const validation = participantsSchema.validate(req.body,{ abortEarly:false});
 
@@ -60,11 +77,24 @@ app.post("/participants", async (req, res) => {
         return
     }
 
+    const error = await validationParticipant(req);
+    if (error) {
+        return res.sendStatus(error)
+    } 
+    
     try {
         await db.collection("participants").insertOne({
             name,
             lastStatus: Date.now(),
         });
+        await db.collection("message").insertOne({
+            "from":name,
+            "to":"todos",
+            "text": "entrou na sala...",
+            "type":"statys",
+            time,
+        })
+
         res.status(201).send("Participante postado");
     } catch (err) {
         res.status(422).send(err);
@@ -74,19 +104,24 @@ app.post("/participants", async (req, res) => {
 
 app.get("/messages", async (req,res)=>{
     const limit = parseInt(req.query.limit);
-    console.log(limit)
+   
     const user= req.headers.user;
+
+    const filterMessage = await db.collection("message")
+    .find({ $or: [{ "from":user}, {"to": user},{ "type": "message"}, { "type": "status"}]})
+    .toArray();
+
 
 
     try{
-        const messages = await db
-        .collection("message")
-        .find()
-        .toArray();
-        res.send(messages.slice(-limit))
+       if (!limit){
+        res.send(filterMessage)
+        return
+       }
+        res.send(filterMessage .slice(-limit))
     } catch (err) {
-        console.log(err);
-        res.sendStatus(500);
+    
+        res.sendStatus(500).send(err);
     }
 })
 
@@ -112,7 +147,7 @@ app.post("/messages", async (req,res)=>{
     }
 
     try{
-        await db.collection('message').insert({
+        await db.collection('message').insertOne({
             from,
             to,
             text,
@@ -127,6 +162,57 @@ app.post("/messages", async (req,res)=>{
 
 })
 
+
+app.post("/status",async (req,res)=>{
+
+    const nameUser = req.headers.user;
+
+    try {
+        const participant = await db.collection("participants").findOne({ "name":  nameUser})
+
+
+        if (!participant){
+            res.sendStatus(404)
+            return
+        }
+         db.collection("participants").updateOne({name: nameUser}, { $set: {lastStatus:Date.now()}})
+         .then(
+            res.sendStatus(200)
+         )
+    } catch (err) {
+        res.status(500).send(err);
+    }
+
+
+})
+
+setInterval(updateParticipant,15000)
+
+
+function updateParticipant (){
+
+    const now = Date.now();
+
+    db.collection("participants").find()
+    .toArray()
+    .then((p)=>{
+        p.forEach (element => {
+            const idleTime = now - element.lastStatus
+
+            if (idleTime > 10000) {
+
+                db.collection("participants").deleteOne({name:element.name})
+                db.collection("message").insertOne({
+                    from: element.name,
+                    to: 'todos',
+                    text : "sai da sala...",
+                    type: "status",
+                    time: dayjs().format("HH:mm:ss")
+                })
+            }
+        })
+    })
+}
 
 app.listen(5000, () => {
     console.log("Rodando porta 5 mil");
