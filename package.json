@@ -2,7 +2,6 @@
   "name": "projeto13-batepapo-uol-api",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,5 +17,14 @@
     "gitignore": "^0.7.0",
     "joi": "^17.7.0",
     "mongodb": "^4.11.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EduuCarvalho/projeto13-batepapo-uol-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EduuCarvalho/projeto13-batepapo-uol-api/issues"
+  },
+  "homepage": "https://github.com/EduuCarvalho/projeto13-batepapo-uol-api#readme",
+  "description": ""
 }
